@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sinyal — Ağ Paneli</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap');
+
+  :root{
+    --bg: #0D1B2A;
+    --bg-2: #0A1520;
+    --panel: #142A3D;
+    --panel-alt: #1B3650;
+    --line: rgba(143,163,176,0.14);
+    --amber: #F2A94D;
+    --amber-dim: rgba(242,169,77,0.18);
+    --teal: #4FD1C5;
+    --teal-dim: rgba(79,209,197,0.16);
+    --text: #EAF2F5;
+    --text-dim: #8FA3B0;
+    --danger: #E6675A;
+    --radius-lg: 22px;
+    --radius-sm: 10px;
+  }
+
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+
+  html,body{
+    margin:0; padding:0;
+    background: radial-gradient(ellipse 120% 80% at 50% -10%, #16324A 0%, var(--bg) 55%, var(--bg-2) 100%);
+    color: var(--text);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap{
+    max-width: 480px;
+    margin: 0 auto;
+    padding: env(safe-area-inset-top,20px) 16px calc(env(safe-area-inset-bottom,20px) + 24px);
+  }
+
+  header{
+    display:flex; align-items:baseline; justify-content:space-between;
+    padding: 10px 4px 22px;
+  }
+  header .brand{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:700; font-size:22px; letter-spacing:-0.02em;
+    display:flex; align-items:center; gap:8px;
+  }
+  header .brand .dot{
+    width:9px; height:9px; border-radius:50%;
+    background: var(--teal);
+    box-shadow: 0 0 0 4px var(--teal-dim);
+  }
+  header .clock{
+    font-size:13px; color: var(--text-dim); font-variant-numeric: tabular-nums;
+  }
+
+  .card{
+    background: linear-gradient(165deg, var(--panel) 0%, var(--panel-alt) 100%);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 22px 20px;
+    margin-bottom: 14px;
+    position: relative;
+    overflow: hidden;
+  }
+  .card::before{
+    content:"";
+    position:absolute; inset:0;
+    background: repeating-linear-gradient(180deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 3px);
+    pointer-events:none;
+  }
+  .card-head{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom: 16px;
+  }
+  .card-title{
+    font-size:14px; font-weight:600; color: var(--text);
+    display:flex; align-items:center; gap:8px;
+  }
+  .card-title svg{ width:17px; height:17px; opacity:0.85; flex-shrink:0;}
+  .card-sub{ font-size:12px; color: var(--text-dim); }
+
+  /* --- Speed gauge card --- */
+  .gauge-card{ text-align:center; padding-top:20px; }
+  .gauge-wrap{ position:relative; width:220px; height:130px; margin: 0 auto 6px; }
+  .gauge-wrap svg{ width:100%; height:100%; }
+  .gauge-track{ stroke: rgba(143,163,176,0.16); }
+  .gauge-fill{
+    stroke: var(--amber);
+    stroke-linecap: round;
+    transition: stroke-dashoffset 1.1s cubic-bezier(.34,1.4,.4,1), stroke 0.4s;
+    filter: drop-shadow(0 0 6px rgba(242,169,77,0.45));
+  }
+  .gauge-readout{
+    position:absolute; left:0; right:0; bottom:6px;
+    text-align:center;
+  }
+  .gauge-value{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:700; font-size:40px; line-height:1;
+    letter-spacing:-0.02em;
+  }
+  .gauge-unit{ font-size:12px; color:var(--text-dim); margin-top:2px; }
+  .speed-meta{
+    display:flex; justify-content:center; gap:26px;
+    margin-top: 14px; padding-top:14px;
+    border-top: 1px solid var(--line);
+  }
+  .speed-meta .m{ text-align:center; }
+  .speed-meta .m .v{ font-family:'Space Grotesk',sans-serif; font-size:17px; font-weight:600; }
+  .speed-meta .m .l{ font-size:11px; color:var(--text-dim); margin-top:2px; }
+
+  .btn{
+    appearance:none; border:none; cursor:pointer;
+    font-family:'Inter',sans-serif; font-weight:600; font-size:14px;
+    padding: 13px 20px; border-radius: 100px;
+    background: var(--amber); color: #1A1006;
+    width:100%; margin-top:18px;
+    transition: transform 0.15s, opacity 0.2s;
+  }
+  .btn:active{ transform: scale(0.97); }
+  .btn:disabled{ opacity:0.55; }
+  .btn.secondary{
+    background: var(--teal-dim); color: var(--teal);
+    border: 1px solid rgba(79,209,197,0.3);
+  }
+  .btn.ghost{
+    background: transparent; color: var(--text-dim);
+    border: 1px solid var(--line);
+  }
+
+  .status-line{
+    font-size:12.5px; color: var(--text-dim); text-align:center;
+    margin-top:10px; min-height:16px;
+  }
+  .status-line.err{ color: var(--danger); }
+
+  /* --- Location card --- */
+  .coord-grid{
+    display:grid; grid-template-columns: 1fr 1fr; gap:10px;
+    margin-bottom: 12px;
+  }
+  .coord-box{
+    background: rgba(0,0,0,0.18);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+  }
+  .coord-box .l{ font-size:11px; color:var(--text-dim); margin-bottom:3px;}
+  .coord-box .v{ font-family:'Space Grotesk',monospace; font-size:15px; font-variant-numeric: tabular-nums;}
+  .place-line{
+    font-size: 15px; font-weight:500; margin-top:2px;
+  }
+  .place-sub{ font-size:12.5px; color:var(--text-dim); margin-top:2px;}
+
+  /* --- Info rows (ISP / device) --- */
+  .info-row{
+    display:flex; justify-content:space-between; align-items:center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 14px;
+  }
+  .info-row:last-child{ border-bottom:none; padding-bottom:0;}
+  .info-row .k{ color: var(--text-dim); }
+  .info-row .v{ font-weight:500; text-align:right; max-width:60%; }
+
+  /* --- Weather --- */
+  .weather-hero{
+    display:flex; align-items:center; gap:16px;
+  }
+  .weather-temp{
+    font-family:'Space Grotesk',sans-serif; font-size:46px; font-weight:700; letter-spacing:-0.02em;
+  }
+  .weather-icon{ width:52px; height:52px; flex-shrink:0; }
+  .weather-desc{ font-size:13.5px; color:var(--text-dim); margin-top:2px;}
+
+  footer{
+    text-align:center; font-size:11.5px; color: var(--text-dim);
+    opacity:0.6; padding: 10px 0 4px;
+  }
+
+  ::selection{ background: var(--amber-dim); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="brand"><span class="dot"></span>Sinyal</div>
+    <div class="clock" id="clock">--:--:--</div>
+  </header>
+
+  <!-- SPEED TEST -->
+  <div class="card gauge-card">
+    <div class="card-head">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M19.1 4.9L17 7"/><circle cx="12" cy="14" r="7"/><path d="M12 14l3-3"/></svg>
+        Bağlantı Hızı
+      </div>
+      <div class="card-sub" id="speedStatus">Hazır</div>
+    </div>
+
+    <div class="gauge-wrap">
+      <svg viewBox="0 0 220 130">
+        <path class="gauge-track" d="M 20 115 A 90 90 0 0 1 200 115" fill="none" stroke-width="14"/>
+        <path class="gauge-fill" id="gaugeFill" d="M 20 115 A 90 90 0 0 1 200 115" fill="none" stroke-width="14"
+              stroke-dasharray="283" stroke-dashoffset="283"/>
+      </svg>
+      <div class="gauge-readout">
+        <div class="gauge-value" id="speedValue">0</div>
+        <div class="gauge-unit">Mbps indirme</div>
+      </div>
+    </div>
+
+    <div class="speed-meta">
+      <div class="m"><div class="v" id="pingValue">—</div><div class="l">gecikme (ms)</div></div>
+      <div class="m"><div class="v" id="uploadValue">—</div><div class="l">yükleme (Mbps)</div></div>
+    </div>
+
+    <button class="btn" id="speedBtn" onclick="runSpeedTest()">Hız Testini Başlat</button>
+    <div class="status-line" id="speedStatusLine"></div>
+  </div>
+
+  <!-- LOCATION -->
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+        Konum
+      </div>
+      <div class="card-sub" id="locAccuracy"></div>
+    </div>
+
+    <div id="locPlaceholder">
+      <div class="place-sub" style="margin-bottom:0;">Konumunu bulmak için izin ver.</div>
+    </div>
+
+    <div id="locResult" style="display:none;">
+      <div class="place-line" id="placeName">—</div>
+      <div class="place-sub" id="placeCountry">—</div>
+      <div class="coord-grid" style="margin-top:14px;">
+        <div class="coord-box"><div class="l">Enlem</div><div class="v" id="latVal">—</div></div>
+        <div class="coord-box"><div class="l">Boylam</div><div class="v" id="lonVal">—</div></div>
+      </div>
+    </div>
+
+    <button class="btn secondary" id="locBtn" onclick="getLocation()">Konumu Bul</button>
+    <div class="status-line" id="locStatusLine"></div>
+  </div>
+
+  <!-- WEATHER -->
+  <div class="card" id="weatherCard" style="display:none;">
+    <div class="card-head">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17.5 19a4.5 4.5 0 0 0 0-9 6 6 0 0 0-11.4-1.5A5 5 0 0 0 6.5 19h11Z"/></svg>
+        Bulunduğun Yerde Hava
+      </div>
+      <div class="card-sub" id="weatherPlace"></div>
+    </div>
+    <div class="weather-hero">
+      <div id="weatherIconBox" class="weather-icon"></div>
+      <div>
+        <div class="weather-temp"><span id="weatherTemp">—</span>°</div>
+        <div class="weather-desc" id="weatherDesc">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- IP / ISP -->
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M2 9h20"/></svg>
+        IP ve Sağlayıcı
+      </div>
+    </div>
+    <div id="ispRows">
+      <div class="info-row"><span class="k">IP adresi</span><span class="v">Yükleniyor…</span></div>
+      <div class="info-row"><span class="k">Sağlayıcı (ISP)</span><span class="v">—</span></div>
+      <div class="info-row"><span class="k">Şehir / Ülke</span><span class="v">—</span></div>
+    </div>
+  </div>
+
+  <!-- DEVICE -->
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg>
+        Cihaz
+      </div>
+    </div>
+    <div id="deviceRows"></div>
+  </div>
+
+  <footer>Sinyal · gerçek zamanlı ağ ve cihaz bilgi paneli</footer>
+</div>
+
+<script>
+/* Saat */
+function tickClock(){
+  const d = new Date();
+  document.getElementById('clock').textContent = d.toLocaleTimeString('tr-TR');
+}
+setInterval(tickClock, 1000); tickClock();
+
+/* ---------- GAUGE ---------- */
+const ARC_LEN = 283; // approx length of the drawn arc path
+const GAUGE_MAX = 250; // Mbps top of dial
+
+function setGauge(mbps){
+  const pct = Math.min(mbps / GAUGE_MAX, 1);
+  const offset = ARC_LEN - (ARC_LEN * pct);
+  const fill = document.getElementById('gaugeFill');
+  fill.style.strokeDashoffset = offset;
+  fill.style.stroke = mbps > 100 ? '#4FD1C5' : mbps > 25 ? '#F2A94D' : '#E6675A';
+  document.getElementById('speedValue').textContent = mbps.toFixed(mbps < 10 ? 2 : 1);
+}
+
+/* ---------- SPEED TEST ---------- */
+async function measurePing(){
+  const samples = [];
+  for(let i=0;i<3;i++){
+    const t0 = performance.now();
+    await fetch(`https://speed.cloudflare.com/__down?bytes=0&x=${Date.now()}-${i}`, {cache:'no-store'});
+    samples.push(performance.now() - t0);
+  }
+  return Math.min(...samples);
+}
+
+async function measureDownload(){
+  const bytes = 20_000_000; // 20MB
+  const t0 = performance.now();
+  const res = await fetch(`https://speed.cloudflare.com/__down?bytes=${bytes}&x=${Date.now()}`, {cache:'no-store'});
+  const buf = await res.arrayBuffer();
+  const seconds = (performance.now() - t0) / 1000;
+  const mbps = (buf.byteLength * 8) / seconds / 1_000_000;
+  return mbps;
+}
+
+async function measureUpload(){
+  const bytes = 6_000_000; // 6MB
+  const data = new Blob([new Uint8Array(bytes)]);
+  const t0 = performance.now();
+  await fetch('https://speed.cloudflare.com/__up', { method:'POST', body: data, cache:'no-store' });
+  const seconds = (performance.now() - t0) / 1000;
+  return (bytes * 8) / seconds / 1_000_000;
+}
+
+async function runSpeedTest(){
+  const btn = document.getElementById('speedBtn');
+  const statusTag = document.getElementById('speedStatus');
+  const statusLine = document.getElementById('speedStatusLine');
+  btn.disabled = true;
+  statusLine.classList.remove('err');
+  setGauge(0);
+  document.getElementById('pingValue').textContent = '—';
+  document.getElementById('uploadValue').textContent = '—';
+
+  try{
+    statusTag.textContent = 'Gecikme ölçülüyor';
+    statusLine.textContent = 'Sunucuya bağlanılıyor…';
+    const ping = await measurePing();
+    document.getElementById('pingValue').textContent = ping.toFixed(0);
+
+    statusTag.textContent = 'İndirme test ediliyor';
+    statusLine.textContent = 'Veri indiriliyor, birkaç saniye sürebilir…';
+    const down = await measureDownload();
+    setGauge(down);
+
+    statusTag.textContent = 'Yükleme test ediliyor';
+    statusLine.textContent = 'Veri gönderiliyor…';
+    const up = await measureUpload();
+    document.getElementById('uploadValue').textContent = up.toFixed(1);
+
+    statusTag.textContent = 'Tamamlandı';
+    statusLine.textContent = 'Son ölçüm: ' + new Date().toLocaleTimeString('tr-TR');
+  }catch(e){
+    statusTag.textContent = 'Hata';
+    statusLine.textContent = 'Test başarısız oldu. İnternet bağlantını kontrol et.';
+    statusLine.classList.add('err');
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+/* ---------- LOCATION ---------- */
+function getLocation(){
+  const btn = document.getElementById('locBtn');
+  const statusLine = document.getElementById('locStatusLine');
+  statusLine.classList.remove('err');
+  if(!navigator.geolocation){
+    statusLine.textContent = 'Bu tarayıcı konum özelliğini desteklemiyor.';
+    statusLine.classList.add('err');
+    return;
+  }
+  btn.disabled = true;
+  statusLine.textContent = 'Konum isteniyor…';
+
+  navigator.geolocation.getCurrentPosition(async (pos)=>{
+    const { latitude, longitude, accuracy } = pos.coords;
+    document.getElementById('locPlaceholder').style.display = 'none';
+    document.getElementById('locResult').style.display = 'block';
+    document.getElementById('latVal').textContent = latitude.toFixed(5);
+    document.getElementById('lonVal').textContent = longitude.toFixed(5);
+    document.getElementById('locAccuracy').textContent = '±' + Math.round(accuracy) + ' m';
+    statusLine.textContent = '';
+    btn.disabled = false;
+
+    try{
+      const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=12`);
+      const j = await r.json();
+      const addr = j.address || {};
+      const place = addr.suburb || addr.town || addr.city || addr.county || j.name || 'Bilinmeyen konum';
+      const country = [addr.state, addr.country].filter(Boolean).join(', ');
+      document.getElementById('placeName').textContent = place;
+      document.getElementById('placeCountry').textContent = country || '—';
+    }catch(e){ /* sessiz geç, koordinatlar zaten gösteriliyor */ }
+
+    fetchWeather(latitude, longitude);
+  }, (err)=>{
+    btn.disabled = false;
+    const msgs = {
+      1: 'Konum izni reddedildi. Tarayıcı ayarlarından izin ver.',
+      2: 'Konum şu anda alınamıyor.',
+      3: 'Konum isteği zaman aşımına uğradı.'
+    };
+    statusLine.textContent = msgs[err.code] || 'Konum alınamadı.';
+    statusLine.classList.add('err');
+  }, { enableHighAccuracy:true, timeout:12000 });
+}
+
+/* ---------- WEATHER ---------- */
+const WEATHER_ICONS = {
+  clear: `<svg viewBox="0 0 24 24" fill="none" stroke="#F2A94D" stroke-width="1.6"><circle cx="12" cy="12" r="5"/><path d="M12 1v3M12 20v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M1 12h3M20 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>`,
+  cloud: `<svg viewBox="0 0 24 24" fill="none" stroke="#8FA3B0" stroke-width="1.6"><path d="M17.5 19a4.5 4.5 0 0 0 0-9 6 6 0 0 0-11.4-1.5A5 5 0 0 0 6.5 19h11Z"/></svg>`,
+  rain: `<svg viewBox="0 0 24 24" fill="none" stroke="#4FD1C5" stroke-width="1.6"><path d="M16 13a4 4 0 0 0 0-8 5.5 5.5 0 0 0-10.5-1.5A4.5 4.5 0 0 0 6 13h10Z"/><path d="M8 19l-1 2M12 19l-1 2M16 19l-1 2"/></svg>`,
+  snow: `<svg viewBox="0 0 24 24" fill="none" stroke="#EAF2F5" stroke-width="1.6"><path d="M16 13a4 4 0 0 0 0-8 5.5 5.5 0 0 0-10.5-1.5A4.5 4.5 0 0 0 6 13h10Z"/><path d="M9 18v4M9 20l-2 1M9 20l2 1M15 18v4M15 20l-2 1M15 20l2 1"/></svg>`,
+  storm: `<svg viewBox="0 0 24 24" fill="none" stroke="#E6675A" stroke-width="1.6"><path d="M16 11a4 4 0 0 0 0-8 5.5 5.5 0 0 0-10.5-1.5A4.5 4.5 0 0 0 6 11h10Z"/><path d="M11 13l-2 5h3l-1 4 4-6h-3l1-3z"/></svg>`
+};
+function weatherFromCode(code){
+  if([0,1].includes(code)) return {icon:'clear', desc:'Açık'};
+  if([2,3].includes(code)) return {icon:'cloud', desc:'Parçalı bulutlu'};
+  if([45,48].includes(code)) return {icon:'cloud', desc:'Sisli'};
+  if([51,53,55,61,63,65,80,81,82].includes(code)) return {icon:'rain', desc:'Yağmurlu'};
+  if([71,73,75,77,85,86].includes(code)) return {icon:'snow', desc:'Karlı'};
+  if([95,96,99].includes(code)) return {icon:'storm', desc:'Gök gürültülü'};
+  return {icon:'cloud', desc:'Bulutlu'};
+}
+async function fetchWeather(lat, lon){
+  try{
+    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);
+    const j = await r.json();
+    const cw = j.current_weather;
+    const info = weatherFromCode(cw.weathercode);
+    document.getElementById('weatherTemp').textContent = Math.round(cw.temperature);
+    document.getElementById('weatherDesc').textContent = info.desc + ' · rüzgar ' + Math.round(cw.windspeed) + ' km/s';
+    document.getElementById('weatherIconBox').innerHTML = WEATHER_ICONS[info.icon];
+    document.getElementById('weatherPlace').textContent = document.getElementById('placeName').textContent;
+    document.getElementById('weatherCard').style.display = 'block';
+  }catch(e){ /* hava durumu opsiyonel */ }
+}
+
+/* ---------- IP / ISP ---------- */
+async function loadIspInfo(){
+  const box = document.getElementById('ispRows');
+  try{
+    const r = await fetch('https://ipapi.co/json/');
+    const j = await r.json();
+    box.innerHTML = `
+      <div class="info-row"><span class="k">IP adresi</span><span class="v">${j.ip || '—'}</span></div>
+      <div class="info-row"><span class="k">Sağlayıcı (ISP)</span><span class="v">${j.org || '—'}</span></div>
+      <div class="info-row"><span class="k">Şehir / Ülke</span><span class="v">${[j.city, j.country_name].filter(Boolean).join(', ') || '—'}</span></div>
+    `;
+  }catch(e){
+    box.innerHTML = `<div class="info-row"><span class="k">IP bilgisi</span><span class="v">Alınamadı</span></div>`;
+  }
+}
+
+/* ---------- DEVICE ---------- */
+function loadDeviceInfo(){
+  const box = document.getElementById('deviceRows');
+  const ua = navigator.userAgent;
+  const isIOS = /iPhone|iPad|iPod/.test(ua);
+  const model = isIOS ? 'iPhone (Safari)' : 'Algılanamadı';
+  const screenInfo = `${window.screen.width}×${window.screen.height} @ ${window.devicePixelRatio}x`;
+  const cores = navigator.hardwareConcurrency || '—';
+  const lang = navigator.language || '—';
+
+  let rows = `
+    <div class="info-row"><span class="k">Cihaz</span><span class="v">${model}</span></div>
+    <div class="info-row"><span class="k">Ekran</span><span class="v">${screenInfo}</span></div>
+    <div class="info-row"><span class="k">İşlemci çekirdeği</span><span class="v">${cores}</span></div>
+    <div class="info-row"><span class="k">Dil</span><span class="v">${lang}</span></div>
+    <div class="info-row"><span class="k">Pil durumu</span><span class="v" id="batteryRow">Kontrol ediliyor…</span></div>
+  `;
+  box.innerHTML = rows;
+
+  if('getBattery' in navigator){
+    navigator.getBattery().then(b=>{
+      const pct = Math.round(b.level*100);
+      document.getElementById('batteryRow').textContent = pct + '%' + (b.charging ? ' · şarj oluyor' : '');
+    }).catch(()=>{ document.getElementById('batteryRow').textContent = 'Desteklenmiyor'; });
+  } else {
+    document.getElementById('batteryRow').textContent = 'Desteklenmiyor (Safari)';
+  }
+}
+
+loadIspInfo();
+loadDeviceInfo();
+</script>
+</body>
+</html>
